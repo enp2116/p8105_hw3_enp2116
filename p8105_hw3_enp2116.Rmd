@@ -5,8 +5,15 @@ date: "2022-10-06"
 output: github_document
 ---
 
-```{r}
+** This homework includes figures; the readability of your embedded plots (e.g. font sizes, axis labels, titles) will be assessed in Problems 1+ **
+
+
+```{r, echo = FALSE, message = FALSE}
 library(tidyverse)
+library(ggridges)
+library(patchwork)
+
+library(p8105.datasets)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -28,25 +35,82 @@ scale_fill_discrete = scale_fill_viridis_d
 # Problem 1
 
 Loading the instacart dataset from p8105.datasets:
-```{r}
-library(p8105.datasets)
+```{r, message = FALSE}
 data("instacart")
+
+instacart = 
+  instacart %>% 
+  as_tibble(instacart)
 ```
 
 
 Exploration of the dataset:
 
-To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illustrative examples of observations. 
+The `instacart` dataset is tidy, with `r nrow(instacart)` rows and `r ncol(instacart)` columns, indicating we have data on  `r nrow(instacart)` different products ordered through instacart and we have information on `r ncol(instacart)` different dimensions in each of these product orders. The `instacart` dataset contains the variables: `r names(instacart)`. 
 
-Then, do or answer the following (commenting on the results of each):
+Key variables include user_id, order_id, and aisle. User_id has values such as `r head(unique(instacart$user_id))`, with `r instacart %>% select(user_id) %>% distinct %>% count` distinct users in total. Order_id such as `r head(unique(instacart$order_id))`, with `r instacart %>% select(user_id, order_id) %>% distinct %>% count` total orders in this dataset. Finally, aisle has values such as `r head(instacart$aisle)`. 
+
+For a single order, there are multiple observations, such as all the products for order 1:
+```{r, echo = FALSE, message = FALSE}
+instacart %>%
+ group_by(order_id) %>%
+ filter(order_id == 1)
+```
+
 
 * How many aisles are there, and which aisles are the most items ordered from?
+```{r, echo = FALSE, message = FALSE}
+instacart %>% 
+  distinct(aisle) %>% 
+  nrow()
 
-* Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+instacart %>% 
+  group_by(aisle) %>% 
+ summarize(
+    n_obs = n()
+  ) %>% 
+  arrange(desc(n_obs))
+```
+There are 134 aisles. Fresh vegetables and fresh fruits are ordered most, with 150609 orders and 150473, respectively.
 
-* Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+* Plot showing the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered, and ordering aisles by number of orders.
+```{r}
+instacart %>%
+  group_by(aisle) %>%
+  summarize(
+    n_obs = n()) %>% 
+  filter(n_obs > 10000) %>% 
+  mutate(aisle = forcats::fct_reorder(aisle, n_obs, desc)) %>% 
+  ggplot(aes(x = aisle, y = n_obs)) + geom_point(aes(aisle, n_obs), alpha = .5) +
+  labs(
+    title = "Orders by Aisle",
+    x = "Aisle Name",
+    y = "Number of Orders"
+    )  +  theme_bw() + theme(legend.position = "bottom") + theme(axis.text.x = element_text(angle = 90))
 
-* Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+```
+
+* Table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”, including the number of times each item is ordered.
+```{r}
+instacart %>% 
+  filter(aisle == "baking ingredients" | aisle == "dog food care" | aisle == "packaged vegetables fruits") %>%
+  group_by(aisle) %>% 
+  count(product_name) %>% 
+  mutate(rank = min_rank(desc(n))) %>% 
+  filter(rank < 4) %>% 
+  arrange(desc(n)) %>%
+  knitr::kable()
+```
+
+* Table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week, formatted as a readable 2 x 7 table.
+```{r}
+instacart %>%
+  filter(product_name == "Pink Lady Apples" | product_name == "Coffee Ice Cream") %>%
+  group_by(product_name, order_dow) %>%
+  summarize(mean_hour = mean(order_hour_of_day)) %>%
+  spread(key = order_dow, value = mean_hour) %>%
+  knitr::kable(digits = 2)
+```
 
 
 
@@ -55,11 +119,43 @@ Then, do or answer the following (commenting on the results of each):
 
 This problem uses five weeks of accelerometer data collected on a 63 year-old male with BMI 25, who was admitted to the Advanced Cardiac Care Center of Columbia University Medical Center and diagnosed with congestive heart failure (CHF). The data can be downloaded here. In this spreadsheet, variables activity.* are the activity counts for each minute of a 24-hour day starting at midnight.
 
-* Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+* Loading, tidying, and otherwise wrangling the data; including all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes.
+
+```{r, message = FALSE}
+accel_data =
+  read_csv("data/accel_data.csv") %>%
+  janitor::clean_names() %>%
+  mutate(
+    split_week = case_when(day == "Saturday" ~ 'weekend',
+                          day == "Sunday" ~ 'weekend',
+                          day == "Monday" ~ 'weekday',
+                          day == "Tuesday" ~ 'weekday',
+                          day == "Wednesday" ~ 'weekday',
+                          day == "Thursday" ~ 'weekday',
+                          day == "Friday" ~ 'weekday')) %>% 
+relocate(split_week)
+```
+
+Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+
+The `accel` dataset is tidy, with `r nrow(accel_data)` rows and `r ncol(accel_data)` columns, indicating we have accelerometer data for `r nrow(accel_data)` different days. In addition to accelerometer data, the `accel` dataset contains variables: day, day_id, week, and split_week. Day has values such as `r head(unique(accel_data$day))`, day_id such as `r head(accel_data$day_id)`, week such as `r head(unique(accel_data$week))`, and split_week such as `r head(unique(accel_data$split_week))`. For each single day, there are 1,440 activity counts. Activity counts take on values such as `r head(unique(accel_data$activity_1))`.
+
 
 * Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+```{r}
+accel_data %>% 
+  group_by(day) %>% 
+  summarize (daily_total_activity = sum(across(activity_1:activity_1440), na.rm = T)) %>%
+  spread(key = day, value = daily_total_activity) %>%
+  knitr::kable(digits = 0)
+```
+
+
 
 * Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
+```{r}
+
+```
 
 
 # Problem 3
