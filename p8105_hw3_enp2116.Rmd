@@ -103,7 +103,7 @@ instacart %>%
 ```
 
 * Table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week, formatted as a readable 2 x 7 table.
-```{r}
+```{r, message = FALSE}
 instacart %>%
   filter(product_name == "Pink Lady Apples" | product_name == "Coffee Ice Cream") %>%
   group_by(product_name, order_dow) %>%
@@ -125,6 +125,11 @@ This problem uses five weeks of accelerometer data collected on a 63 year-old ma
 accel_data =
   read_csv("data/accel_data.csv") %>%
   janitor::clean_names() %>%
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = "minute", 
+    names_prefix = "activity_",
+    values_to = "activity_count") %>%
   mutate(
     split_week = case_when(day == "Saturday" ~ 'weekend',
                           day == "Sunday" ~ 'weekend',
@@ -133,37 +138,50 @@ accel_data =
                           day == "Wednesday" ~ 'weekday',
                           day == "Thursday" ~ 'weekday',
                           day == "Friday" ~ 'weekday')) %>% 
-relocate(split_week)
+  relocate(split_week) %>% 
+  mutate(day = fct_relevel(day, c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
 ```
 
-Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+Describing the resulting dataset:
 
-The `accel` dataset is tidy, with `r nrow(accel_data)` rows and `r ncol(accel_data)` columns, indicating we have accelerometer data for `r nrow(accel_data)` different days. In addition to accelerometer data, the `accel` dataset contains variables: day, day_id, week, and split_week. Day has values such as `r head(unique(accel_data$day))`, day_id such as `r head(accel_data$day_id)`, week such as `r head(unique(accel_data$week))`, and split_week such as `r head(unique(accel_data$split_week))`. For each single day, there are 1,440 activity counts. Activity counts take on values such as `r head(unique(accel_data$activity_1))`.
+The `accel` dataset is tidy, with `r nrow(accel_data)` rows and `r ncol(accel_data)` columns, indicating we have accelerometer data for `r nrow(accel_data)` different minutes. The `accel` dataset contains variables: `r ls(accel_data)`. Day has values such as `r head(unique(accel_data$day))`, week such as `r head(unique(accel_data$week))`, and split_week such as `r head(unique(accel_data$split_week))`. For each single day, there are 1,440 activity counts, which are broken up by minute. Activity counts per minute take on values such as `r head(unique(accel_data$activity_count))`.
 
 
 * Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
-```{r}
+
+```{r, message = FALSE}
 accel_data %>% 
-  group_by(day) %>% 
-  summarize (daily_total_activity = sum(across(activity_1:activity_1440), na.rm = T)) %>%
-  spread(key = day, value = daily_total_activity) %>%
+  group_by(day, week) %>% 
+  summarize(daily_total_activity = sum(activity_count)) %>% 
+  pivot_wider(names_from = day, values_from = daily_total_activity) %>%
   knitr::kable(digits = 0)
 ```
-
-
+Tuesday, Wednesday, and Thursdays all seem to have the consistent amounts of total activity (hovering around 300000-450000), whereas Fridays through Mondays are more variable (low of under 80000, high of almost 700000). These are expected patterns for weekdays versus weekends/extended weekends. A weird observation comes across in Saturday Weeks 4 & 5, where I predict that the accelerometer was not worn and the machine's default (NULL) is a 1 for each minute.
 
 * Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
 ```{r}
-
+ggplot(accel_data, aes(x = minute, y = activity_count)) +
+  geom_line(aes(color = day), alpha = .4) +
+  labs(
+    title = "Daily Activity by Minute",
+    x = "Minute",
+    y = "Activity Count"
+    )  + scale_x_discrete(breaks = NULL)
 ```
+
+Based on this graph, we can see that the distribution of activity throughout the day tends to be bimodal, with a lull before noon. On weekends, we see a larger nighttime peak and on weekdays we see a larger morning peak.
 
 
 # Problem 3
 
 Loading the NY NOAA dataset from p8105.datasets:
 ```{r}
-library(p8105.datasets)
 data("ny_noaa")
+
+noaa_df = 
+  ny_noaa %>% 
+  as_tibble(ny_noaa)
+noaa_df
 ```
 
 
@@ -175,8 +193,35 @@ Then, do or answer the following (commenting on the results of each):
 
 * Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
 
+- You can find the NOAA documentation hereLinks to an external site.; it might give you insight into the units being used to record the snow variable. When considering alternative units, your discussion might be related to the question regarding the most common observations for snowfall. Is it possible that the original recorded data might have been converted to different units for this dataset?
+_____________
+
+- As for the final plot, you should filter values based on the original definition of snowfall (i.e., using the original units). To that end, you might want to consider retaining both the original variable snow as well as your proposal for a variable with a more sensical unit. As long as you're clear about how you label values and units in your visualizations, you should be good!
+
+
+_____________
 
 * Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
 
+- line plots
+
+- For this problem, you want to find the average of tmax for every unique combination of station ID, year, and month (perhaps consider grouping by these three variables to obtain the desired result). Then, you will want to construct two plots - one for January and one for July - that show the average maximum temperature (vertical axis) against years (horizontal axis) for every station.
+
+- spaghetti plot w suppressed labels
+
+
+- Then for each year of the data, create distribution plots of snow. So, for example, if the dataset spanned the years 1997 to 1999, you would have three separate distribution plots of (the filtered observations of) snow by year.
+
+- You should make a single plot for part (i) and a single plot for part (ii). Then, you should combine these two plots side by side into a single-panel exhibit; you can find a refresher on how to do that hereLinks to an external site.. For the first plot, you are correct that "vs" implies tmax should be on the vertical axis and that tmin should be on the horizontal axis.
+
+facet_grid
+
 * Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
 
+- filter the data to only include rows such that 0 < snow < 100.
+
+- You should compute the average for max temperature for each station separately and then plot the two plots side by side. 
+
+- patchwork
+
+- We want to limit the values of snowfall to the criteria specified and then use ggplot to plot the distribution (density plot). 
