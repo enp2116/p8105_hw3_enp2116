@@ -175,7 +175,7 @@ Based on this graph, we can see that the distribution of activity throughout the
 # Problem 3
 
 Loading the NY NOAA dataset from p8105.datasets:
-```{r}
+```{r, message = FALSE}
 data("ny_noaa")
 
 noaa_df = 
@@ -185,13 +185,17 @@ noaa_df
 ```
 
 
-Exploration of this dataset: To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and indicating the extent to which missing data is an issue. 
+A short description of the dataset, noting the size and structure of the data, describing some key variables, and indicating the extent to which missing data is an issue:
 
+The `noaa_df` dataset has `r nrow(noaa_df)` rows and `r ncol(noaa_df)` columns, indicating we have weather data on  `r nrow(noaa_df)` different dates and we have information on `r ncol(noaa_df)` different dimensions, including date. The `noaa_df` dataset contains the variables: `r names(noaa_df)`. Prcp has values such as `r head(unique(noaa_df$prcp))`, snow such as `r head(unique(noaa_df$snow))`, and snwd such as `r head(unique(noaa_df$snwd))`. Finally, tmax and tmin are originally set up as character variables, which is not appropriate given they are number values and should be numeric. 
 
-Then, do or answer the following (commenting on the results of each):
+The `noaa_df` dataset does have a decent number of missing data (variables prcp, snow, snwd, tmax, tmin), most notably with almost 44% of temperature data missing. This missingness occurs primarily in the first half of the timeframe, but also in chunks in the second half, which may be an issue if missingness is not random (related to other variables in the dataset). The percentages for missing data are listed by variable:
 
+```{r, echo = FALSE}
+(colMeans(is.na(noaa_df)))*100
+```
 
-* Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
+* Some data cleaning. Creating separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
 
 - You can find the NOAA documentation hereLinks to an external site.; it might give you insight into the units being used to record the snow variable. When considering alternative units, your discussion might be related to the question regarding the most common observations for snowfall. Is it possible that the original recorded data might have been converted to different units for this dataset?
 _____________
@@ -202,6 +206,13 @@ _____________
 _____________
 
 * Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
+
+```{r}
+
+```
+
+
+data type for tmax is numeric.
 
 - line plots
 
