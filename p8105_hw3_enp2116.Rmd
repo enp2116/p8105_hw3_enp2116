@@ -136,7 +136,8 @@ accel_data =
                           day == "Thursday" ~ 'weekday',
                           day == "Friday" ~ 'weekday')) %>% 
   relocate(split_week) %>% 
-  mutate(day = fct_relevel(day, c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
+  mutate(day = fct_relevel(day, c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")),
+         minute = as.numeric(minute))
   
 ```
 
@@ -165,10 +166,10 @@ ggplot(aes(x = minute, y = activity_count)) +
     title = "Daily Activity by Minute",
     x = "Minutes from Midnight",
     y = "Activity Count"
-    )  + scale_x_discrete(breaks = NULL)
+    )  + scale_x_continuous(breaks = c(0, 180, 360, 540, 720, 900, 1080, 1260, 1440))
 ```
 
-Based on this graph, we can see that the distribution of activity throughout the day tends to have a consistent lull before noon. On Sundays, we see this as a larger nighttime peak and on weekdays we see a larger morning peak. Despite this, activity counts per minute usually hover around 1225, with more active time periods mostly under 2500.
+Based on this graph, we can see that the distribution of activity throughout the day tends to have a consistent lull in the nighttime (while sleeping). On Sundays, we see more activity around noon and on Friday and Saturday, we see more activity at evening. Despite this, activity counts per minute usually hover around 1225, with more active time periods mostly under 2500, although staying around 5000 per minute for some more active periods.
 
 
 
@@ -218,14 +219,14 @@ noaa_tidy =
 ```
 
 For snowfall, the most commonly observed values are 0, with this value making up about 77.4% of the data. This is most likely the case because snow itself is a rare event, even in a cold climate that keeps snow on the ground (meaning positive values for the snow depth variable). Additionally, a histogram of the snowfall shows the high right-skew distribution of the data (lots of low values), which may explain why the units were originally chosen to be small.
-```{r}
+```{r, echo = FALSE}
 noaa_tidy %>% 
   select(snow) %>% 
   filter(snow == 0) %>% 
   count() / 2595176
 ```
 
-```{r}
+```{r, message = FALSE}
 noaa_tidy %>% 
   ggplot(aes(snow_cm)) + geom_histogram() + xlim(0, 30) + ylim(0, 50000) +
   labs(
@@ -238,7 +239,7 @@ noaa_tidy %>%
 
 * Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
   noaa_tidy %>% 
   group_by(id, month, year) %>% 
   summarize(
@@ -248,22 +249,21 @@ noaa_tidy %>%
   ggplot(aes(x = year, y = mean_tmax, color = id)) + 
   geom_line() +   
   theme(legend.position="none") + 
-  labs(x = "Years", y = "Average Max Temperature (degrees C)", title = "Average Max Temperature by Month and Year") + 
+  labs(x = "Years", y = "Average Max Temperature (degrees C)", title = "Average Max Temperature by Month and Year (1980-2010)") + 
   facet_grid(~ month) + 
   theme(panel.spacing.x = unit(6, "mm"))
 
 ```
-Based on our two-panel plot, we can see a clear seasonal trend for average max temperature when comparing january and july; january has hovered around 0 degrees C while July around 27.5 degrees C. Additionally, at a given time point, different stations seem to mirror one anothers' trends (within about 10 degrees C). Finally, over the 30 year timespan of interest, average max temperature has not changed much when comparing within the same months.
+Based on our two-panel plot, we can see a clear seasonal trend for average max temperature when comparing january and july; january has hovered around 0 degrees C while July around 27.5 degrees C. Additionally, at a given time point, different stations seem to mirror one anothers' trends (within about 10 degrees C). Finally, over the 30 year timespan of interest, average max temperature has not changed much when comparing within the same months. A key outlier occurs in the July panel, with a lower temperature of about 14 degrees C in the late 1980s. 
 
 
 * Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
-```{r, message = FALSE}
+```{r, message = FALSE, warning = FALSE}
 tmax_vs_tmin = 
   noaa_tidy %>% 
   ggplot(aes(x = tmin_C, y = tmax_C)) + 
-  geom_hex(alpha = .5) +
-  theme(legend.position = "none") + 
-  labs(x = "Minimum Temperature (degrees C)", y = "Maximum Temperature (degrees C)")
+  geom_hex(bins = 40) +
+  labs(x = "Minimum Temperature (degrees C)", y = "Maximum Temperature (degrees C)", subtitle = "Heatmap Plot of Min Temp vs. Max Temp")
 
 snow_dist = 
   noaa_tidy %>% 
@@ -272,9 +272,8 @@ snow_dist =
   filter(0 < snow & snow < 100) %>% 
   ggplot(aes(x = snow, color = year)) + 
   geom_density(alpha = .5) + 
-  theme(legend.position = "none")  + 
-  labs(x = "Snowfall (mm)", y = "Density")
-
+  theme(legend.key.size = unit(1, 'mm'))  + 
+  labs(x = "Snowfall (mm)", y = "Density", subtitle = "Density Plot of Snowfall (mm)")
 
 (tmax_vs_tmin + snow_dist)
 ```
